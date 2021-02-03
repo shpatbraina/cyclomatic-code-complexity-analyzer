@@ -6,7 +6,12 @@ import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.nodeTypes.NodeWithBody;
 import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.ast.stmt.Statement;
-
+/**
+ * Per kalkulim te kompleksitetit ciklomatik si reference kam perdorur linkun ne vijim:
+ *
+ * https://perso.ensta-paris.fr/~diam/java/online/notes-java/principles_and_practices/complexity/complexity-java-method.html
+ *
+ * */
 public class IfCheckAnalyzer {
 
     private StringBuilder results;

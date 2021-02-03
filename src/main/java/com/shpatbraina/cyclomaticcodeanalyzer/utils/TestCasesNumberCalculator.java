@@ -12,7 +12,12 @@ import com.github.javaparser.ast.stmt.Statement;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-
+/**
+ * Per kalkulim te kompleksitetit ciklomatik si reference kam perdorur linkun ne vijim:
+ *
+ * https://perso.ensta-paris.fr/~diam/java/online/notes-java/principles_and_practices/complexity/complexity-java-method.html
+ *
+ * */
 public class TestCasesNumberCalculator {
 
     private AtomicInteger ifCount = new AtomicInteger(0);
