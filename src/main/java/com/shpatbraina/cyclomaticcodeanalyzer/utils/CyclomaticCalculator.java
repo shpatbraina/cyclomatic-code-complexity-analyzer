@@ -17,9 +17,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * */
 public class CyclomaticCalculator {
 
+    private AtomicInteger complexityCount = new AtomicInteger(1);
+
     public int countCyclomaticComplexity(MethodDeclaration method) {
 
-        AtomicInteger complexityCount = new AtomicInteger(1);
         countInner(method.getBody().get(), complexityCount);
         return complexityCount.get();
     }
@@ -61,12 +62,14 @@ public class CyclomaticCalculator {
             AtomicInteger ifCount = new AtomicInteger(1);
             countConditions(statement.asIfStmt().getCondition(), ifCount);
             integer.addAndGet(ifCount.get());
-            if (statement.asIfStmt().getElseStmt().isPresent()) {
-                countIf(statement.asIfStmt().getElseStmt().get(), integer);
+            if (statement.asIfStmt().getElseStmt().isPresent() && statement.asIfStmt().getElseStmt().get().isIfStmt()) {
+                countIf(statement.asIfStmt().getElseStmt().get().asIfStmt(), integer);
+                countInner(statement.asIfStmt().getElseStmt().get().asIfStmt().getThenStmt().asBlockStmt(), integer);
             }
-        }
-        if (statement.isBlockStmt()) {
-            integer.getAndIncrement();
+            else if(statement.asIfStmt().getElseStmt().isPresent()){
+                integer.getAndIncrement();
+                countInner(statement.asIfStmt().getElseStmt().get().asBlockStmt(), integer);
+            }
         }
     }
 

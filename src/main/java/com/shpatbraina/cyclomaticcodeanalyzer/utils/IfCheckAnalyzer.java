@@ -18,7 +18,7 @@ public class IfCheckAnalyzer {
 
     public String analyze(MethodDeclaration method) {
         results = new StringBuilder();
-        results.append("\n\n Analyzing IF Checks \n");
+        results.append("\n\nAnalyzing IF Checks \n");
         innerAnalyze(method.getBody().get());
         return results.toString();
     }
@@ -40,8 +40,12 @@ public class IfCheckAnalyzer {
 
         if (statement.isIfStmt()) {
             countConditions(statement.asIfStmt().getCondition());
-            if (statement.asIfStmt().getElseStmt().isPresent()) {
+            if(statement.asIfStmt().getElseStmt().isPresent() && statement.asIfStmt().getElseStmt().get().isIfStmt()){
                 countIf(statement.asIfStmt().getElseStmt().get());
+                innerAnalyze(statement.asIfStmt().getElseStmt().get().asIfStmt().getThenStmt().asBlockStmt());
+            }
+            else if(statement.asIfStmt().getElseStmt().isPresent()){
+                innerAnalyze(statement.asIfStmt().getElseStmt().get().asBlockStmt());
             }
         }
         else if(statement.isForStmt()) {
@@ -52,11 +56,12 @@ public class IfCheckAnalyzer {
     }
 
     private void countConditions(Expression expression) {
-        results.append("\n expression: ").append(expression.toString());
+        results.append("\nexpression: ").append(expression.toString());
         if(expression.isBinaryExpr()) {
             if (expression.asBinaryExpr().getLeft().isBinaryExpr()) {
                 countConditions(expression.asBinaryExpr().getLeft());
-            } else if (expression.asBinaryExpr().getRight().isBinaryExpr()) {
+            }
+            if (expression.asBinaryExpr().getRight().isBinaryExpr()) {
                 countConditions(expression.asBinaryExpr().getRight());
             } else {
                 Operator operator = expression.asBinaryExpr().getOperator();
@@ -81,13 +86,19 @@ public class IfCheckAnalyzer {
                     .append(" to ");
             if(expression.asMethodCallExpr().getArguments().get(0).isStringLiteralExpr()) {
                 results
-                        .append(expression.asMethodCallExpr().getArguments().get(0).asStringLiteralExpr().asString())
-                        .append("\n");
+                        .append(expression.asMethodCallExpr().getArguments().get(0).asStringLiteralExpr().asString());
             }
             else if(expression.asMethodCallExpr().getArguments().get(0).isNameExpr()) {
-                results.append(expression.asMethodCallExpr().getArguments().get(0).asNameExpr().getName().asString())
-                        .append("\n");
+                results.append(expression.asMethodCallExpr().getArguments().get(0).asNameExpr().getName().asString());
             }
+            results.append("\nPositive case: " + expression.asMethodCallExpr().getScope().get().asNameExpr().getName().asString().concat(" = ")
+                    .concat((expression.isMethodCallExpr() ? expression.asMethodCallExpr().getArguments().get(0).asStringLiteralExpr().asString() :
+                            expression.asMethodCallExpr().getArguments().get(0).asNameExpr().getNameAsString())));
+
+            results.append("\nNegative case: " + expression.asMethodCallExpr().getScope().get().asNameExpr().getName().asString().concat(" != ")
+                    .concat((expression.isMethodCallExpr() ? expression.asMethodCallExpr().getArguments().get(0).asStringLiteralExpr().asString() :
+                            expression.asMethodCallExpr().getArguments().get(0).asNameExpr().getNameAsString())))
+                    .append("\n");
         }
     }
 
@@ -98,25 +109,49 @@ public class IfCheckAnalyzer {
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be equal to ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
+                results.append("\nPositive case: " + left.asIntegerLiteralExpr().asNumber().toString().concat(" = ")
+                        .concat(right.asIntegerLiteralExpr().asNumber().toString()));
+                results.append("\nNegative case: " + left.asIntegerLiteralExpr().asNumber().toString().concat(" != ")
+                        .concat(right.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should not be equal to ")
+                        .concat(right.asIntegerLiteralExpr().asNumber().toString()));
+                results.append("\nPositive case: " + left.asIntegerLiteralExpr().asNumber().toString().concat(" != ")
+                        .concat(right.asIntegerLiteralExpr().asNumber().toString()));
+                results.append("\nNegative case: " + left.asIntegerLiteralExpr().asNumber().toString().concat(" = ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.GREATER)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be greater than ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
+                results.append("\nPositive case: " + left.asIntegerLiteralExpr().asNumber().toString().concat(" > ")
+                        .concat(right.asIntegerLiteralExpr().asNumber().toString()));
+                results.append("\nNegative case: " + left.asIntegerLiteralExpr().asNumber().toString().concat(" <= ")
+                        .concat(right.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.LESS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be less than ")
+                        .concat(right.asIntegerLiteralExpr().asNumber().toString()));
+                results.append("\nPositive case: " + left.asIntegerLiteralExpr().asNumber().toString().concat(" < ")
+                        .concat(right.asIntegerLiteralExpr().asNumber().toString()));
+                results.append("\nNegative case: " + left.asIntegerLiteralExpr().asNumber().toString().concat(" >= ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.GREATER_EQUALS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be equal or greater than ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
+                results.append("\nPositive case: " + left.asIntegerLiteralExpr().asNumber().toString().concat(" >= ")
+                        .concat(right.asIntegerLiteralExpr().asNumber().toString()));
+                results.append("\nNegative case: " + left.asIntegerLiteralExpr().asNumber().toString().concat(" < ")
+                        .concat(right.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.LESS_EQUALS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be equal or less than ")
+                        .concat(right.asIntegerLiteralExpr().asNumber().toString()));
+                results.append("\nPositive case: " + left.asIntegerLiteralExpr().asNumber().toString().concat(" <= ")
+                        .concat(right.asIntegerLiteralExpr().asNumber().toString()));
+                results.append("\nNegative case: " + left.asIntegerLiteralExpr().asNumber().toString().concat(" > ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
             }
         }
@@ -124,55 +159,55 @@ public class IfCheckAnalyzer {
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be equal to ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
-                results.append("\n Positive case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
                 Integer j = Integer.parseInt(right.asIntegerLiteralExpr().asNumber().toString()) - 1;
-                results.append("\n Negative case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(j.toString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should not be equal to ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
                 Integer i = Integer.parseInt(right.asIntegerLiteralExpr().asNumber().toString()) + 1;
-                results.append("\n Positive case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.GREATER)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be greater than ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
                 Integer i = Integer.parseInt(right.asIntegerLiteralExpr().asNumber().toString()) + 1;
-                results.append("\n Positive case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.LESS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be less than ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
                 Integer i = Integer.parseInt(right.asIntegerLiteralExpr().asNumber().toString()) - 1;
-                results.append("\n Positive case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.GREATER_EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be equal or greater than ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
                 Integer i = Integer.parseInt(right.asIntegerLiteralExpr().asNumber().toString()) - 1;
-                results.append("\n Positive case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
-                results.append("\n Negative case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
             }
             else if(operator.equals(Operator.LESS_EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be equal or less than ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
                 Integer i = Integer.parseInt(right.asIntegerLiteralExpr().asNumber().toString()) + 1;
-                results.append("\n Positive case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
-                results.append("\n Negative case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
             }
         }
@@ -180,55 +215,55 @@ public class IfCheckAnalyzer {
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be equal to ")
                         .concat(right.asNameExpr().getName().asString()));
-                results.append("\n Positive case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(left.asIntegerLiteralExpr().asNumber().toString()));
                 Integer j = Integer.parseInt(left.asIntegerLiteralExpr().asNumber().toString()) - 1;
-                results.append("\n Negative case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(j.toString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should not be equal to ")
                         .concat(right.asNameExpr().getName().asString()));
                 Integer i = Integer.parseInt(left.asIntegerLiteralExpr().asNumber().toString()) + 1;
-                results.append("\n Positive case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(left.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.GREATER)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be greater than ")
                         .concat(right.asNameExpr().getName().asString()));
                 Integer i = Integer.parseInt(left.asIntegerLiteralExpr().asNumber().toString()) - 1;
-                results.append("\n Positive case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(left.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.LESS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be less than ")
                         .concat(right.asNameExpr().getName().asString()));
                 Integer i = Integer.parseInt(left.asIntegerLiteralExpr().asNumber().toString()) + 1;
-                results.append("\n Positive case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(left.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.GREATER_EQUALS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be equal to or greater than ")
                         .concat(right.asNameExpr().getName().asString()));
                 Integer i = Integer.parseInt(left.asIntegerLiteralExpr().asNumber().toString()) + 1;
-                results.append("\n Positive case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(left.asIntegerLiteralExpr().asNumber().toString()));
-                results.append("\n Negative case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
             }
             else if(operator.equals(Operator.LESS_EQUALS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be equal or less than ")
                         .concat(right.asNameExpr().getName().asString()));
                 Integer i = Integer.parseInt(left.asIntegerLiteralExpr().asNumber().toString()) - 1;
-                results.append("\n Positive case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(left.asIntegerLiteralExpr().asNumber().toString()));
-                results.append("\n Negative case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
             }
         }
@@ -236,55 +271,55 @@ public class IfCheckAnalyzer {
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should be equal to ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
-                results.append("\n Positive case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
                 Integer j = Integer.parseInt(right.asIntegerLiteralExpr().asNumber().toString()) - 1;
-                results.append("\n Negative case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(j.toString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should not be equal to ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
                 Integer i = Integer.parseInt(right.asIntegerLiteralExpr().asNumber().toString()) + 1;
-                results.append("\n Positive case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.GREATER)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should be greater than ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
                 Integer i = Integer.parseInt(right.asIntegerLiteralExpr().asNumber().toString()) + 1;
-                results.append("\n Positive case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.LESS)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should be less than ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
                 Integer i = Integer.parseInt(right.asIntegerLiteralExpr().asNumber().toString()) - 1;
-                results.append("\n Positive case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.GREATER_EQUALS)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should be equal or greater than ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
                 Integer i = Integer.parseInt(right.asIntegerLiteralExpr().asNumber().toString()) - 1;
-                results.append("\n Positive case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
-                results.append("\n Negative case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
             }
             else if(operator.equals(Operator.LESS_EQUALS)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should be equal or less than ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
                 Integer i = Integer.parseInt(right.asIntegerLiteralExpr().asNumber().toString()) + 1;
-                results.append("\n Positive case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
-                results.append("\n Negative case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
             }
         }
@@ -292,55 +327,55 @@ public class IfCheckAnalyzer {
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be equal to ")
                         .concat(right.asFieldAccessExpr().toString()));
-                results.append("\n Positive case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(left.asIntegerLiteralExpr().asNumber().toString()));
                 Integer j = Integer.parseInt(left.asIntegerLiteralExpr().asNumber().toString()) - 1;
-                results.append("\n Negative case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(j.toString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should not be equal to ")
                         .concat(right.asFieldAccessExpr().toString()));
                 Integer i = Integer.parseInt(left.asIntegerLiteralExpr().asNumber().toString()) + 1;
-                results.append("\n Positive case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(left.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.GREATER)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be greater than ")
                         .concat(right.asFieldAccessExpr().toString()));
                 Integer i = Integer.parseInt(left.asIntegerLiteralExpr().asNumber().toString()) - 1;
-                results.append("\n Positive case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(left.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.LESS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be less than ")
                         .concat(right.asFieldAccessExpr().toString()));
                 Integer i = Integer.parseInt(left.asIntegerLiteralExpr().asNumber().toString()) + 1;
-                results.append("\n Positive case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(left.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.GREATER_EQUALS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be equal to or greater than ")
                         .concat(right.asFieldAccessExpr().toString()));
                 Integer i = Integer.parseInt(left.asIntegerLiteralExpr().asNumber().toString()) + 1;
-                results.append("\n Positive case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(left.asIntegerLiteralExpr().asNumber().toString()));
-                results.append("\n Negative case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
             }
             else if(operator.equals(Operator.LESS_EQUALS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be equal or less than ")
                         .concat(right.asFieldAccessExpr().toString()));
                 Integer i = Integer.parseInt(left.asIntegerLiteralExpr().asNumber().toString()) - 1;
-                results.append("\n Positive case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(left.asIntegerLiteralExpr().asNumber().toString()));
-                results.append("\n Negative case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
             }
         }
@@ -348,55 +383,55 @@ public class IfCheckAnalyzer {
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should be equal to ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
-                results.append("\n Positive case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
                 Integer j = Integer.parseInt(right.asIntegerLiteralExpr().asNumber().toString()) - 1;
-                results.append("\n Negative case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(j.toString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should not be equal to ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
                 Integer i = Integer.parseInt(right.asIntegerLiteralExpr().asNumber().toString()) + 1;
-                results.append("\n Positive case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.GREATER)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should be greater than ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
                 Integer i = Integer.parseInt(right.asIntegerLiteralExpr().asNumber().toString()) + 1;
-                results.append("\n Positive case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.LESS)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should be less than ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
                 Integer i = Integer.parseInt(right.asIntegerLiteralExpr().asNumber().toString()) - 1;
-                results.append("\n Positive case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.GREATER_EQUALS)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should be equal or greater than ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
                 Integer i = Integer.parseInt(right.asIntegerLiteralExpr().asNumber().toString()) - 1;
-                results.append("\n Positive case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
-                results.append("\n Negative case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
             }
             else if(operator.equals(Operator.LESS_EQUALS)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should be equal or less than ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
                 Integer i = Integer.parseInt(right.asIntegerLiteralExpr().asNumber().toString()) + 1;
-                results.append("\n Positive case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(right.asIntegerLiteralExpr().asNumber().toString()));
-                results.append("\n Negative case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
             }
         }
@@ -404,55 +439,55 @@ public class IfCheckAnalyzer {
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be equal to ")
                         .concat(right.asArrayAccessExpr().toString()));
-                results.append("\n Positive case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(left.asIntegerLiteralExpr().asNumber().toString()));
                 Integer j = Integer.parseInt(left.asIntegerLiteralExpr().asNumber().toString()) - 1;
-                results.append("\n Negative case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(j.toString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should not be equal to ")
                         .concat(right.asArrayAccessExpr().toString()));
                 Integer i = Integer.parseInt(left.asIntegerLiteralExpr().asNumber().toString()) + 1;
-                results.append("\n Positive case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(left.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.GREATER)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be greater than ")
                         .concat(right.asArrayAccessExpr().toString()));
                 Integer i = Integer.parseInt(left.asIntegerLiteralExpr().asNumber().toString()) - 1;
-                results.append("\n Positive case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(left.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.LESS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be less than ")
                         .concat(right.asArrayAccessExpr().toString()));
                 Integer i = Integer.parseInt(left.asIntegerLiteralExpr().asNumber().toString()) + 1;
-                results.append("\n Positive case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(left.asIntegerLiteralExpr().asNumber().toString()));
             }
             else if(operator.equals(Operator.GREATER_EQUALS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be equal to or greater than ")
                         .concat(right.asArrayAccessExpr().toString()));
                 Integer i = Integer.parseInt(left.asIntegerLiteralExpr().asNumber().toString()) + 1;
-                results.append("\n Positive case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(left.asIntegerLiteralExpr().asNumber().toString()));
-                results.append("\n Negative case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
             }
             else if(operator.equals(Operator.LESS_EQUALS)) {
                 results.append("\n" + left.asIntegerLiteralExpr().asNumber().toString().concat(" should be equal or less than ")
                         .concat(right.asArrayAccessExpr().toString()));
                 Integer i = Integer.parseInt(left.asIntegerLiteralExpr().asNumber().toString()) - 1;
-                results.append("\n Positive case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(left.asIntegerLiteralExpr().asNumber().toString()));
-                results.append("\n Negative case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
             }
         }
@@ -461,25 +496,49 @@ public class IfCheckAnalyzer {
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be equal to ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
+                results.append("\nPositive case: " + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" = ")
+                        .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
+                results.append("\nNegative case: " + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" != ")
+                        .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should not be equal to ")
+                        .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
+                results.append("\nPositive case: " + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" != ")
+                        .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
+                results.append("\nNegative case: " + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" = ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.GREATER)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be greater than ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
+                results.append("\nPositive case: " + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" > ")
+                        .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
+                results.append("\nNegative case: " + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" <= ")
+                        .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.LESS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be less than ")
+                        .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
+                results.append("\nPositive case: " + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" < ")
+                        .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
+                results.append("\nNegative case: " + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" >= ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.GREATER_EQUALS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be equal or greater than ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
+                results.append("\nPositive case: " + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" >= ")
+                        .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
+                results.append("\nNegative case: " + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" < ")
+                        .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.LESS_EQUALS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be equal or less than ")
+                        .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
+                results.append("\nPositive case: " + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" <= ")
+                        .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
+                results.append("\nNegative case: " + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" > ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
             }
         }
@@ -487,55 +546,55 @@ public class IfCheckAnalyzer {
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be equal to ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
-                results.append("\n Positive case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
                 Double j = right.asDoubleLiteralExpr().asDouble() - 1;
-                results.append("\n Negative case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(j.toString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should not be equal to ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
                 Double i = right.asDoubleLiteralExpr().asDouble() + 1;
-                results.append("\n Positive case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.GREATER)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be greater than ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
                 Double i = right.asDoubleLiteralExpr().asDouble() + 1;
-                results.append("\n Positive case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.LESS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be less than ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
                 Double i = right.asDoubleLiteralExpr().asDouble() - 1;
-                results.append("\n Positive case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.GREATER_EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be equal or greater than ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
                 Double i = right.asDoubleLiteralExpr().asDouble() - 1;
-                results.append("\n Positive case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
-                results.append("\n Negative case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
             }
             else if(operator.equals(Operator.LESS_EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be equal or less than ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
                 Double i = right.asDoubleLiteralExpr().asDouble() + 1;
-                results.append("\n Positive case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
-                results.append("\n Negative case: " + left.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + left.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
             }
         }
@@ -543,55 +602,55 @@ public class IfCheckAnalyzer {
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be equal to ")
                         .concat(right.asNameExpr().getName().asString()));
-                results.append("\n Positive case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(Double.toString(left.asDoubleLiteralExpr().asDouble())));
                 Double j = left.asDoubleLiteralExpr().asDouble() - 1;
-                results.append("\n Negative case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(j.toString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should not be equal to ")
                         .concat(right.asNameExpr().getName().asString()));
                 Double i = left.asDoubleLiteralExpr().asDouble() + 1;
-                results.append("\n Positive case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(Double.toString(left.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.GREATER)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be greater than ")
                         .concat(right.asNameExpr().getName().asString()));
                 Double i = left.asDoubleLiteralExpr().asDouble() - 1;
-                results.append("\n Positive case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(Double.toString(left.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.LESS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be less than ")
                         .concat(right.asNameExpr().getName().asString()));
                 Double i = left.asDoubleLiteralExpr().asDouble() + 1;
-                results.append("\n Positive case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(Double.toString(left.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.GREATER_EQUALS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be equal to or greater than ")
                         .concat(right.asNameExpr().getName().asString()));
                 Double i = left.asDoubleLiteralExpr().asDouble() + 1;
-                results.append("\n Positive case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(Double.toString(left.asDoubleLiteralExpr().asDouble())));
-                results.append("\n Negative case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
             }
             else if(operator.equals(Operator.LESS_EQUALS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be equal or less than ")
                         .concat(right.asNameExpr().getName().asString()));
                 Double i = left.asDoubleLiteralExpr().asDouble() - 1;
-                results.append("\n Positive case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nPositive case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(Double.toString(left.asDoubleLiteralExpr().asDouble())));
-                results.append("\n Negative case: " + right.asNameExpr().getName().asString().concat(" = ")
+                results.append("\nNegative case: " + right.asNameExpr().getName().asString().concat(" = ")
                         .concat(i.toString()));
             }
         }
@@ -599,55 +658,55 @@ public class IfCheckAnalyzer {
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should be equal to ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
-                results.append("\n Positive case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
                 Double j = right.asDoubleLiteralExpr().asDouble() - 1;
-                results.append("\n Negative case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(j.toString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should not be equal to ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
                 Double i = right.asDoubleLiteralExpr().asDouble() + 1;
-                results.append("\n Positive case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.GREATER)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should be greater than ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
                 Double i = right.asDoubleLiteralExpr().asDouble() + 1;
-                results.append("\n Positive case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.LESS)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should be less than ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
                 Double i = right.asDoubleLiteralExpr().asDouble() - 1;
-                results.append("\n Positive case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.GREATER_EQUALS)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should be equal or greater than ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
                 Double i = right.asDoubleLiteralExpr().asDouble() - 1;
-                results.append("\n Positive case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
-                results.append("\n Negative case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
             }
             else if(operator.equals(Operator.LESS_EQUALS)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should be equal or less than ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
                 Double i = right.asDoubleLiteralExpr().asDouble() + 1;
-                results.append("\n Positive case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
-                results.append("\n Negative case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
             }
         }
@@ -655,55 +714,55 @@ public class IfCheckAnalyzer {
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be equal to ")
                         .concat(right.asFieldAccessExpr().toString()));
-                results.append("\n Positive case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(left.asDoubleLiteralExpr().asDouble())));
                 Double j = left.asDoubleLiteralExpr().asDouble() - 1;
-                results.append("\n Negative case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(j.toString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should not be equal to ")
                         .concat(right.asFieldAccessExpr().toString()));
                 Double i = left.asDoubleLiteralExpr().asDouble() + 1;
-                results.append("\n Positive case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(left.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.GREATER)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be greater than ")
                         .concat(right.asFieldAccessExpr().toString()));
                 Double i = left.asDoubleLiteralExpr().asDouble() - 1;
-                results.append("\n Positive case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(left.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.LESS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be less than ")
                         .concat(right.asFieldAccessExpr().toString()));
                 Double i = left.asDoubleLiteralExpr().asDouble() + 1;
-                results.append("\n Positive case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(left.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.GREATER_EQUALS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be equal to or greater than ")
                         .concat(right.asFieldAccessExpr().toString()));
                 Double i = left.asDoubleLiteralExpr().asDouble() + 1;
-                results.append("\n Positive case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(left.asDoubleLiteralExpr().asDouble())));
-                results.append("\n Negative case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
             }
             else if(operator.equals(Operator.LESS_EQUALS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be equal or less than ")
                         .concat(right.asFieldAccessExpr().toString()));
                 Double i = left.asDoubleLiteralExpr().asDouble() - 1;
-                results.append("\n Positive case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(left.asDoubleLiteralExpr().asDouble())));
-                results.append("\n Negative case: " + right.asFieldAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asFieldAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
             }
         }
@@ -711,55 +770,55 @@ public class IfCheckAnalyzer {
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should be equal to ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
-                results.append("\n Positive case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
                 Double j = right.asDoubleLiteralExpr().asDouble() - 1;
-                results.append("\n Negative case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(j.toString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should not be equal to ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
                 Double i = right.asDoubleLiteralExpr().asDouble() + 1;
-                results.append("\n Positive case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.GREATER)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should be greater than ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
                 Double i = right.asDoubleLiteralExpr().asDouble() + 1;
-                results.append("\n Positive case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.LESS)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should be less than ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
                 Double i = right.asDoubleLiteralExpr().asDouble() - 1;
-                results.append("\n Positive case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.GREATER_EQUALS)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should be equal or greater than ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
                 Double i = right.asDoubleLiteralExpr().asDouble() - 1;
-                results.append("\n Positive case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
-                results.append("\n Negative case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
             }
             else if(operator.equals(Operator.LESS_EQUALS)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should be equal or less than ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
                 Double i = right.asDoubleLiteralExpr().asDouble() + 1;
-                results.append("\n Positive case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
-                results.append("\n Negative case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
             }
         }
@@ -767,76 +826,92 @@ public class IfCheckAnalyzer {
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be equal to ")
                         .concat(right.asArrayAccessExpr().toString()));
-                results.append("\n Positive case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(left.asDoubleLiteralExpr().asDouble())));
                 Double j = left.asDoubleLiteralExpr().asDouble() - 1;
-                results.append("\n Negative case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(j.toString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should not be equal to ")
                         .concat(right.asArrayAccessExpr().toString()));
                 Double i = left.asDoubleLiteralExpr().asDouble() + 1;
-                results.append("\n Positive case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(left.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.GREATER)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be greater than ")
                         .concat(right.asArrayAccessExpr().toString()));
                 Double i = left.asDoubleLiteralExpr().asDouble() - 1;
-                results.append("\n Positive case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(left.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.LESS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be less than ")
                         .concat(right.asArrayAccessExpr().toString()));
                 Double i = left.asDoubleLiteralExpr().asDouble() + 1;
-                results.append("\n Positive case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
-                results.append("\n Negative case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(left.asDoubleLiteralExpr().asDouble())));
             }
             else if(operator.equals(Operator.GREATER_EQUALS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be equal to or greater than ")
                         .concat(right.asArrayAccessExpr().toString()));
                 Double i = left.asDoubleLiteralExpr().asDouble() + 1;
-                results.append("\n Positive case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(left.asDoubleLiteralExpr().asDouble())));
-                results.append("\n Negative case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
             }
             else if(operator.equals(Operator.LESS_EQUALS)) {
                 results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be equal or less than ")
                         .concat(right.asArrayAccessExpr().toString()));
                 Double i = left.asDoubleLiteralExpr().asDouble() - 1;
-                results.append("\n Positive case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nPositive case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(Double.toString(left.asDoubleLiteralExpr().asDouble())));
-                results.append("\n Negative case: " + right.asArrayAccessExpr().toString().concat(" = ")
+                results.append("\nNegative case: " + right.asArrayAccessExpr().toString().concat(" = ")
                         .concat(i.toString()));
             }
         }
         //String
         if(left.isStringLiteralExpr() && right.isStringLiteralExpr()){
             if(operator.equals(Operator.EQUALS)) {
-                results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should be equal to ")
-                        .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
+                results.append("\n" + left.asStringLiteralExpr().asString().concat(" should be equal to ")
+                        .concat(right.asStringLiteralExpr().asString()));
+                results.append("\nPositive case: " + left.asStringLiteralExpr().asString().concat(" = ")
+                        .concat(right.asStringLiteralExpr().asString()));
+                results.append("\nNegative case: " + left.asStringLiteralExpr().asString().concat(" != ")
+                        .concat(right.asStringLiteralExpr().asString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
-                results.append("\n" + Double.toString(left.asDoubleLiteralExpr().asDouble()).concat(" should not be equal to ")
-                        .concat(Double.toString(right.asDoubleLiteralExpr().asDouble())));
+                results.append("\n" + left.asStringLiteralExpr().asString().concat(" should not be equal to ")
+                        .concat(right.asStringLiteralExpr().asString()));
+                results.append("\nPositive case: " + left.asStringLiteralExpr().asString().concat(" != ")
+                        .concat(right.asStringLiteralExpr().asString()));
+                results.append("\nNegative case: " + left.asStringLiteralExpr().asString().concat(" = ")
+                        .concat(right.asStringLiteralExpr().asString()));
             }
         }
         else if(left.isNameExpr() && right.isStringLiteralExpr()){
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be equal to ")
                         .concat(right.asStringLiteralExpr().asString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" = ")
+                        .concat(right.asStringLiteralExpr().asString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" != ")
+                        .concat(right.asStringLiteralExpr().asString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should not be equal to ")
+                        .concat(right.asStringLiteralExpr().asString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" != ")
+                        .concat(right.asStringLiteralExpr().asString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" = ")
                         .concat(right.asStringLiteralExpr().asString()));
             }
         }
@@ -844,17 +919,33 @@ public class IfCheckAnalyzer {
             if (operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asStringLiteralExpr().asString().concat(" should be equal to ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asStringLiteralExpr().asString().concat(" = ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asStringLiteralExpr().asString().concat(" != ")
+                        .concat(right.asNameExpr().getNameAsString()));
             } else if (operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asStringLiteralExpr().asString().concat(" should not be equal to ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asStringLiteralExpr().asString().concat(" != ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asStringLiteralExpr().asString().concat(" = ")
+                        .concat(right.asNameExpr().getNameAsString()));
             }
         }
         else if(left.isFieldAccessExpr() && right.isStringLiteralExpr()) {
             if (operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should be equal to ")
                         .concat(right.asStringLiteralExpr().asString()));
+                results.append("\nPositive case: " + left.asFieldAccessExpr().getNameAsString().concat(" = ")
+                        .concat(right.asStringLiteralExpr().asString()));
+                results.append("\nNegative case: " + left.asFieldAccessExpr().getNameAsString().concat(" != ")
+                        .concat(right.asStringLiteralExpr().asString()));
             } else if (operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should not be equal to ")
+                        .concat(right.asStringLiteralExpr().asString()));
+                results.append("\nPositive case: " + left.asFieldAccessExpr().getNameAsString().concat(" != ")
+                        .concat(right.asStringLiteralExpr().asString()));
+                results.append("\nNegative case: " + left.asFieldAccessExpr().getNameAsString().concat(" = ")
                         .concat(right.asStringLiteralExpr().asString()));
             }
         }
@@ -862,19 +953,35 @@ public class IfCheckAnalyzer {
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asStringLiteralExpr().asString().concat(" should be equal to ")
                         .concat(right.asFieldAccessExpr().toString()));
+                results.append("\nPositive case: " + left.asStringLiteralExpr().asString().concat(" = ")
+                        .concat(right.asFieldAccessExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asStringLiteralExpr().asString().concat(" != ")
+                        .concat(right.asFieldAccessExpr().getNameAsString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asStringLiteralExpr().asString().concat(" should not be equal to ")
                         .concat(right.asFieldAccessExpr().toString()));
+                results.append("\nPositive case: " + left.asStringLiteralExpr().asString().concat(" != ")
+                        .concat(right.asFieldAccessExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asStringLiteralExpr().asString().concat(" = ")
+                        .concat(right.asFieldAccessExpr().getNameAsString()));
             }
         }
         else if(left.isArrayAccessExpr() && right.isStringLiteralExpr()){
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should be equal to ")
                         .concat(right.asStringLiteralExpr().asString()));
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                        .concat(right.asStringLiteralExpr().asString()));
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" != ")
+                        .concat(right.asStringLiteralExpr().asString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should not be equal to ")
+                        .concat(right.asStringLiteralExpr().asString()));
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" != ")
+                        .concat(right.asStringLiteralExpr().asString()));
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" = ")
                         .concat(right.asStringLiteralExpr().asString()));
             }
         }
@@ -882,9 +989,17 @@ public class IfCheckAnalyzer {
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asStringLiteralExpr().asString().concat(" should be equal to ")
                         .concat(right.asArrayAccessExpr().toString()));
+                results.append("\nPositive case: " + left.asStringLiteralExpr().asString().concat(" = ")
+                        .concat(right.asArrayAccessExpr().toString()));
+                results.append("\nNegative case: " + left.asStringLiteralExpr().asString().concat(" != ")
+                        .concat(right.asArrayAccessExpr().toString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asStringLiteralExpr().asString().concat(" should not be equal to ")
+                        .concat(right.asArrayAccessExpr().toString()));
+                results.append("\nPositive case: " + left.asStringLiteralExpr().asString().concat(" != ")
+                        .concat(right.asArrayAccessExpr().toString()));
+                results.append("\nNegative case: " + left.asStringLiteralExpr().asString().concat(" = ")
                         .concat(right.asArrayAccessExpr().toString()));
             }
         }
@@ -893,51 +1008,99 @@ public class IfCheckAnalyzer {
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be equal to ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" = ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" != ")
+                        .concat(right.asNameExpr().getNameAsString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should not be equal to ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" != ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" = ")
+                        .concat(right.asNameExpr().getNameAsString()));
             }
             else if(operator.equals(Operator.GREATER)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be greater than ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" > ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" <= ")
+                        .concat(right.asNameExpr().getNameAsString()));
             }
             else if(operator.equals(Operator.LESS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be less than ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" < ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" >= ")
+                        .concat(right.asNameExpr().getNameAsString()));
             }
             else if(operator.equals(Operator.GREATER_EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be equal to or greater than ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" >= ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" < ")
+                        .concat(right.asNameExpr().getNameAsString()));
             }
             else if(operator.equals(Operator.LESS_EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be equal or less than ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" <= ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" > ")
+                        .concat(right.asNameExpr().getNameAsString()));
             }
         }
         else if(left.isNameExpr() && right.isFieldAccessExpr()){
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be equal to ")
                         .concat(right.asFieldAccessExpr().toString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" = ")
+                        .concat(right.asFieldAccessExpr().toString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" != ")
+                        .concat(right.asFieldAccessExpr().toString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should not be equal to ")
+                        .concat(right.asFieldAccessExpr().toString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" != ")
+                        .concat(right.asFieldAccessExpr().toString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" = ")
                         .concat(right.asFieldAccessExpr().toString()));
             }
             else if(operator.equals(Operator.GREATER)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be greater than ")
                         .concat(right.asFieldAccessExpr().toString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" > ")
+                        .concat(right.asFieldAccessExpr().toString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" <= ")
+                        .concat(right.asFieldAccessExpr().toString()));
             }
             else if(operator.equals(Operator.LESS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be less than ")
+                        .concat(right.asFieldAccessExpr().toString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" < ")
+                        .concat(right.asFieldAccessExpr().toString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" >= ")
                         .concat(right.asFieldAccessExpr().toString()));
             }
             else if(operator.equals(Operator.GREATER_EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be equal to or greater than ")
                         .concat(right.asFieldAccessExpr().toString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" >= ")
+                        .concat(right.asFieldAccessExpr().toString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" < ")
+                        .concat(right.asFieldAccessExpr().toString()));
             }
             else if(operator.equals(Operator.LESS_EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be equal or less than ")
+                        .concat(right.asFieldAccessExpr().toString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" <= ")
+                        .concat(right.asFieldAccessExpr().toString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" > ")
                         .concat(right.asFieldAccessExpr().toString()));
             }
         }
@@ -945,77 +1108,149 @@ public class IfCheckAnalyzer {
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should be equal to ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asFieldAccessExpr().toString().concat(" != ")
+                        .concat(right.asNameExpr().getNameAsString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should not be equal to ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asFieldAccessExpr().toString().concat(" != ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asFieldAccessExpr().toString().concat(" = ")
+                        .concat(right.asNameExpr().getNameAsString()));
             }
             else if(operator.equals(Operator.GREATER)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should be greater than ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asFieldAccessExpr().toString().concat(" > ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asFieldAccessExpr().toString().concat(" <= ")
+                        .concat(right.asNameExpr().getNameAsString()));
             }
             else if(operator.equals(Operator.LESS)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should be less than ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asFieldAccessExpr().toString().concat(" < ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asFieldAccessExpr().toString().concat(" >= ")
+                        .concat(right.asNameExpr().getNameAsString()));
             }
             else if(operator.equals(Operator.GREATER_EQUALS)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should be equal to or greater than ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asFieldAccessExpr().toString().concat(" >= ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asFieldAccessExpr().toString().concat(" < ")
+                        .concat(right.asNameExpr().getNameAsString()));
             }
             else if(operator.equals(Operator.LESS_EQUALS)) {
                 results.append("\n" + left.asFieldAccessExpr().toString().concat(" should be equal or less than ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asFieldAccessExpr().toString().concat(" <= ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asFieldAccessExpr().toString().concat(" > ")
+                        .concat(right.asNameExpr().getNameAsString()));
             }
         }
         else if(left.isArrayAccessExpr() && right.isNameExpr()){
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should be equal to ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" != ")
+                        .concat(right.asNameExpr().getNameAsString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should not be equal to ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" != ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" = ")
+                        .concat(right.asNameExpr().getNameAsString()));
             }
             else if(operator.equals(Operator.GREATER)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should be greater than ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" > ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" <= ")
+                        .concat(right.asNameExpr().getNameAsString()));
             }
             else if(operator.equals(Operator.LESS)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should be less than ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" < ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" >= ")
+                        .concat(right.asNameExpr().getNameAsString()));
             }
             else if(operator.equals(Operator.GREATER_EQUALS)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should be equal or greater than ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" >= ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" < ")
+                        .concat(right.asNameExpr().getNameAsString()));
             }
             else if(operator.equals(Operator.LESS_EQUALS)) {
                 results.append("\n" + left.asArrayAccessExpr().toString().concat(" should be equal or less than ")
                         .concat(right.asNameExpr().getName().asString()));
+                results.append("\nPositive case: " + left.asArrayAccessExpr().toString().concat(" <= ")
+                        .concat(right.asNameExpr().getNameAsString()));
+                results.append("\nNegative case: " + left.asArrayAccessExpr().toString().concat(" > ")
+                        .concat(right.asNameExpr().getNameAsString()));
             }
         }
         else if(left.isNameExpr() && right.isArrayAccessExpr()){
             if(operator.equals(Operator.EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be equal to ")
                         .concat(right.asArrayAccessExpr().toString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" = ")
+                        .concat(right.asArrayAccessExpr().toString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" != ")
+                        .concat(right.asArrayAccessExpr().toString()));
             }
             else if(operator.equals(Operator.NOT_EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should not be equal to ")
+                        .concat(right.asArrayAccessExpr().toString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" != ")
+                        .concat(right.asArrayAccessExpr().toString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" = ")
                         .concat(right.asArrayAccessExpr().toString()));
             }
             else if(operator.equals(Operator.GREATER)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be greater than ")
                         .concat(right.asArrayAccessExpr().toString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" > ")
+                        .concat(right.asArrayAccessExpr().toString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" <= ")
+                        .concat(right.asArrayAccessExpr().toString()));
             }
             else if(operator.equals(Operator.LESS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be less than ")
+                        .concat(right.asArrayAccessExpr().toString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" < ")
+                        .concat(right.asArrayAccessExpr().toString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" >= ")
                         .concat(right.asArrayAccessExpr().toString()));
             }
             else if(operator.equals(Operator.GREATER_EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be equal to or greater than ")
                         .concat(right.asArrayAccessExpr().toString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" >= ")
+                        .concat(right.asArrayAccessExpr().toString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" < ")
+                        .concat(right.asArrayAccessExpr().toString()));
             }
             else if(operator.equals(Operator.LESS_EQUALS)) {
                 results.append("\n" + left.asNameExpr().getName().asString().concat(" should be equal or less than ")
+                        .concat(right.asArrayAccessExpr().toString()));
+                results.append("\nPositive case: " + left.asNameExpr().getNameAsString().concat(" <= ")
+                        .concat(right.asArrayAccessExpr().toString()));
+                results.append("\nNegative case: " + left.asNameExpr().getNameAsString().concat(" > ")
                         .concat(right.asArrayAccessExpr().toString()));
             }
         }

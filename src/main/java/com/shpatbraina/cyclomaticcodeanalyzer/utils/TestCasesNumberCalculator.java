@@ -3,12 +3,14 @@ package com.shpatbraina.cyclomaticcodeanalyzer.utils;
 import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.Parameter;
+import com.github.javaparser.ast.expr.BinaryExpr;
 import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.NameExpr;
 import com.github.javaparser.ast.nodeTypes.NodeWithBody;
 import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.ast.stmt.Statement;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -21,34 +23,32 @@ import java.util.stream.Collectors;
 public class TestCasesNumberCalculator {
 
     private AtomicInteger ifCount = new AtomicInteger(0);
+    private List ifStatements = new ArrayList<BinaryExpr>();
+    private AtomicInteger innerIfCount = new AtomicInteger(0);
     private boolean innerIf = false;
 
     public Integer calculateMaxNumberOfTestCases(MethodDeclaration method) {
 
-        countInner(method.getBody().get(), method.getParameters(), false);
+        countInner(method.getBody().get(), method.getParameters());
         if(innerIf) {
-            return ifCount.get() * 2 - 1;
+            return ifCount.get() * 2 - innerIfCount.get();
         }
         else {
             return ifCount.get() * 2;
         }
     }
 
-    private void countInner(BlockStmt body, NodeList<Parameter> parameters, boolean isInner) {
+    private void countInner(BlockStmt body, NodeList<Parameter> parameters) {
         body.getStatements().forEach(statement -> {
 
             if (statement.isIfStmt()) {
-                if(isInner)
-                    innerIf = true;
                 countIf(statement, parameters);
-                countInner(statement.asIfStmt().getThenStmt().asBlockStmt(), parameters, true);
+                countInner(statement.asIfStmt().getThenStmt().asBlockStmt(), parameters);
             } else if (statement.isForStmt() || statement.isDoStmt() || statement.isWhileStmt()) {
-                if(isInner)
-                    innerIf = true;
                 countIf(statement, parameters);
-                countInner(((NodeWithBody) statement).getBody().asBlockStmt(), parameters, true);
+                countInner(((NodeWithBody) statement).getBody().asBlockStmt(), parameters);
             } else if (statement.isForEachStmt() || statement.isTryStmt() || statement.isThrowStmt()) {
-                countInner(((NodeWithBody) statement).getBody().asBlockStmt(), parameters, true);
+                countInner(((NodeWithBody) statement).getBody().asBlockStmt(), parameters);
             } else if (statement.isSwitchStmt()) {
                 countConditions(statement.asSwitchStmt().getSelector(), parameters);
             }
@@ -59,8 +59,12 @@ public class TestCasesNumberCalculator {
 
         if (statement.isIfStmt()) {
             countConditions(statement.asIfStmt().getCondition(), parameters);
-            if (statement.asIfStmt().getElseStmt().isPresent()) {
+            if(statement.asIfStmt().getElseStmt().isPresent() && statement.asIfStmt().getElseStmt().get().isIfStmt()){
                 countIf(statement.asIfStmt().getElseStmt().get(), parameters);
+                countInner(statement.asIfStmt().getElseStmt().get().asIfStmt().getThenStmt().asBlockStmt(), parameters);
+            }
+            else if(statement.asIfStmt().getElseStmt().isPresent()){
+                countInner(statement.asIfStmt().getElseStmt().get().asBlockStmt(), parameters);
             }
         } else if (statement.isForStmt() && statement.asForStmt().getCompare().isPresent()) {
             countConditions(statement.asForStmt().getCompare().get(), parameters);
@@ -82,6 +86,14 @@ public class TestCasesNumberCalculator {
                 countConditions(expression.asBinaryExpr().getRight(), parameters);
             }
             else {
+                if(ifStatements.contains(expression.asBinaryExpr())){
+                    innerIfCount.getAndIncrement();
+                    innerIf = true;
+                }
+                else {
+                    ifStatements.add(expression.asBinaryExpr());
+                }
+
                 List names = expression.getChildNodes().stream()
                         .map(node -> {
                             if (!node.getChildNodes().isEmpty() && node.getChildNodes().get(0) instanceof NameExpr) {
