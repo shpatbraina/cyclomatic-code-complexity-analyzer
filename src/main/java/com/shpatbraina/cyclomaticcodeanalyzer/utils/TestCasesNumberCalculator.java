@@ -77,9 +77,11 @@ public class TestCasesNumberCalculator {
         if (expression.isBinaryExpr()) {
             if (expression.asBinaryExpr().getLeft().isBinaryExpr()) {
                 countConditions(expression.asBinaryExpr().getLeft(), parameters);
-            } else if (expression.asBinaryExpr().getRight().isBinaryExpr()) {
+            }
+            if (expression.asBinaryExpr().getRight().isBinaryExpr()) {
                 countConditions(expression.asBinaryExpr().getRight(), parameters);
-            } else {
+            }
+            else {
                 List names = expression.getChildNodes().stream()
                         .map(node -> {
                             if (!node.getChildNodes().isEmpty() && node.getChildNodes().get(0) instanceof NameExpr) {
